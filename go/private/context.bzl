@@ -288,7 +288,6 @@ def _library_to_source(go, attr, library, coverage_instrumented):
         "clinkopts": _expand_opts(go, "clinkopts", getattr(attr, "clinkopts", [])),
         "cgo_deps": [],
         "cgo_exports": [],
-        "cc_info": None,
         "pgoprofile": getattr(attr, "pgoprofile", None),
     }
     if coverage_instrumented:
@@ -317,7 +316,6 @@ def _library_to_source(go, attr, library, coverage_instrumented):
                 fail("source {} has C/C++ extension, but cgo was not enabled (set 'cgo = True')".format(f.path))
     if library.resolve:
         library.resolve(go, attr, source, _merge_embed)
-    source["cc_info"] = _collect_cc_infos(source["deps"], source["cdeps"])
     return GoSource(**source)
 
 def _collect_runfiles(go, data, deps):
@@ -326,11 +324,13 @@ def _collect_runfiles(go, data, deps):
     srcs and their runfiles are not included."""
     files = depset(transitive = [t[DefaultInfo].files for t in data])
     runfiles = go._ctx.runfiles(transitive_files = files)
-    for t in data:
-        runfiles = runfiles.merge(t[DefaultInfo].data_runfiles)
-    for t in deps:
-        runfiles = runfiles.merge(get_source(t).runfiles)
-    return runfiles
+    return runfiles.merge_all(
+        [t[DefaultInfo].data_runfiles for t in data] +
+        [get_source(t).runfiles for t in deps],
+    )
+
+def cc_info_for_source(source):
+    return _collect_cc_infos(source.deps, source.cdeps)
 
 def _collect_cc_infos(deps, cdeps):
     cc_infos = []
@@ -342,7 +342,7 @@ def _collect_cc_infos(deps, cdeps):
         if is_struct(dep):
             continue
         if GoSource in dep:
-            cc_infos.append(dep[GoSource].cc_info)
+            cc_infos.append(cc_info_for_source(dep[GoSource]))
     return cc_common.merge_cc_infos(cc_infos = cc_infos)
 
 def _check_binary_dep(go, dep, edge):

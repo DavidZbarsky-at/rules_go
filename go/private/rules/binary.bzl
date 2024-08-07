@@ -22,6 +22,7 @@ load(
 )
 load(
     "//go/private:context.bzl",
+    "cc_info_for_source",
     "go_context",
 )
 load(
@@ -179,7 +180,7 @@ def _go_binary_impl(ctx):
             cc_import_kwargs["alwayslink"] = True
         ccinfo = new_cc_import(go, **cc_import_kwargs)
         ccinfo = cc_common.merge_cc_infos(
-            cc_infos = [ccinfo, source.cc_info],
+            cc_infos = [ccinfo, cc_info_for_source(source)],
         )
         providers.append(ccinfo)
 

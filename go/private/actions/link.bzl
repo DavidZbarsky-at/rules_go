@@ -257,22 +257,25 @@ package with this path is linked.""".format(
             )
         importmap_to_label[arc.importmap] = arc.label
     for arc in arcs:
-        for dep_importmap, dep_label in zip(arc._dep_importmaps, arc._dep_labels):
-            if dep_importmap not in importmap_to_label:
+        for i in range(len(arc._dep_importmaps)):
+            dep_importmap = arc._dep_importmaps[i]
+            dep_label = arc._dep_labels[i]
+            mapped_label = getattr(importmap_to_label, dep_importmap, None)
+            if not mapped_label:
                 return "package conflict error: {}: package needed by {} was not passed to linker".format(
                     dep_importmap,
                     arc.label,
                 )
-            if importmap_to_label[dep_importmap] != dep_label:
+            if mapped_label != dep_label:
                 err = """package conflict error: {}: package imports {}
 	  was compiled with: {}
 	but was linked with: {}""".format(
                     arc.importmap,
                     dep_importmap,
                     dep_label,
-                    importmap_to_label[dep_importmap],
+                    mapped_label,
                 )
-                if importmap_to_label[dep_importmap].name.endswith("_test"):
+                if mapped_label.name.endswith("_test"):
                     err += """
 This sometimes happens when an external test (package ending with _test)
 imports a package that imports the library being tested. This is not supported."""
